@@ -14,13 +14,17 @@ import           Control.Monad.Reader           ( ask
 import           Control.Monad.IO.Class         ( liftIO
                                                 , MonadIO
                                                 )
+import           Data.Pool                      ( Pool
+                                                )
 import           Data.Text                      ( Text
+                                                )
+import           Database.PostgreSQL.Simple     ( Connection
                                                 )
 
 data Env
   = Env
-  { envPort :: Int
-  , envLog :: Text -> IO ()
+  { envLog :: Text -> IO ()
+  , envPool :: Pool Connection
   }
 
 newtype App a

@@ -19,16 +19,20 @@ import           Network.Wai                ( Application
                                             , Response
                                             , ResponseReceived
                                             , responseLBS
+                                            , requestMethod
+                                            , pathInfo
                                             )
 import           Network.Wai.Handler.Warp   ( run
                                             )
 import           Network.HTTP.Types         ( status200
+                                            , status404
                                             )
 
 import           App
 import           Config
+import           Controller
+import           DB
 
--- TODO: Use pool
 createDbConnectionPool :: DbConfig -> IO (Pool PG.Connection)
 createDbConnectionPool dbConfig =
   let
@@ -49,9 +53,11 @@ createDbConnectionPool dbConfig =
 
 runApplication :: IO ()
 runApplication = do
-  let env = Env { envPort = 8080, envLog = T.putStrLn }
-  putStrLn $ "Listening on port " <> (show (envPort env))
-  run (envPort env) $ app env
+  config <- fromEnvironment
+  pool <- createDbConnectionPool $ config^.dbConfig
+  let env = Env { envLog = T.putStrLn, envPool = pool }
+  putStrLn $ "Listening on port " <> (show (config^.port))
+  run (config^.port) $ app env
 
 app
   :: Env
@@ -65,6 +71,8 @@ app env req cb = do
 handleRequest
   :: Request
   -> App Response
-handleRequest _ = do
-  info "Incoming request"
-  pure $ responseLBS status200 [] "Hello, world!\n"
+handleRequest req =
+  case (requestMethod req, pathInfo req) of
+    ("GET", ["count"])  -> getCount
+    ("POST", ["count"]) -> incrementCount
+    _                   -> pure $ responseLBS status404 [] "Unknown Route"
